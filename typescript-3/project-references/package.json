@@ -1,0 +1,23 @@
+{
+  "name": "expl-projectreferences",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/main/index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "watch": "tsc -b main/tsconfig.json --verbose --watch",
+    "build": "tsc -b main/tsconfig.json --verbose",
+    "start": "node lib/main/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "left-pad": "^1.3.0"
+  },
+  "devDependencies": {
+    "typescript": "^3.0.1"
+  }
+}
