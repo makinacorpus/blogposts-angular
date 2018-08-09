@@ -117,7 +117,7 @@ Vous avez ainsi la garantie qu'une erreur de compilation surviendra au niveau de
 Les project references
 ----------------------
 
-La principale nouveauté de Typescript 3, ce sont les **project references**. Ils sont intéressants quand vous travaillez sur un projet Typescript comprenant de nombreux modules dans un seul dépôt. Ils permettent de mieux organiser le code et surtout d'**optimiser la compilation**.
+Ils sont intéressants quand vous travaillez sur un projet Typescript comprenant de nombreux modules dans un seul dépôt. Ils permettent de mieux organiser le code et surtout d'**optimiser la compilation**.
 
 Vous pouvez décomposer votre projet en un module maître et plusieurs modules composites.
 
@@ -131,7 +131,7 @@ Une nouvelle option de compilation : `tsc --build` ou `tsc -b` permet de compile
 
 Vous trouverez ici un exemple de projet comprenant un package `main` et deux packages `foo` et `bar`
 
-    .. _Python: https://github.com/makinacorpus/blogposts-angular/tree/master/typescript-3
+    .. _Exemple: https://github.com/makinacorpus/blogposts-angular/tree/master/typescript-3/project-references
 
 J'ai choisi ici de mettre les trois paquets dans trois dossiers de même niveau (on aurait pu mettre le contenu du main à la racine, mais pour cette démo, je l'ai séparé, afin de bien montrer la différence avec le fonctionnement 'classique' de typescript).
 
@@ -177,9 +177,9 @@ Regardons les `tsconfig.json` de `foo` et `main` :
       return 'foo';
     }
 
-L'option de compilation **"composite": true** indique que le projet est un sous-projet.
+L'option de compilation **"composite": true** indique que le module est un sous-projet.
 
-Il est nécessaire de définir la cible de chaque compilation pour générer une seule librairie js. Les **outDir** des différents projets sont configurés pour envoyer les assets dans le même dossier `/lib`
+Il est nécessaire de définir la cible de chaque compilation pour générer une seule librairie js. Ici, les **outDir** des différents projets sont configurés pour envoyer les assets dans le même dossier `/lib`
 
 
 **package main**
