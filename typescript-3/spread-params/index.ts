@@ -29,7 +29,9 @@ console.log(pad('foo', 10, '.'));
 
 // il faut bien comprendre que l'on travaille avec un tuple, pas avec une décomposition arbitraire
 console.log(pad('hello', ...[12, '!'] as [number, string]));
-// console.log(pad('hello', ...[12, '!'])); ne compile pas car ça n'est pas un tuple
+// console.log(pad('hello', ...[12, '!'] as any[])); ne compile pas car ça n'est pas un tuple
+// console.log(pad('hello', ...[12, '!'])); ne compile pas nom plus pour la même raison
+
 
 
 function sum(...args: number[]) {

@@ -6,10 +6,10 @@ Vous les trouverez à cette adresse : https://github.com/makinacorpus/blogposts-
 Contrôle statique des paramètres du reste
 =========================================
 
-Pour rappel, le spread operator javascript *...* permet, notamment :
+Pour rappel, le spread operator javascript *"..."* permet, notamment :
 
-- de passer par décomposition des paramètres à une fonction (https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition)
-- et de récupérer dans une array les paramètres 'du reste' déclarés en plus des paramètres nommés (https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Fonctions/param%C3%A8tres_du_reste )
+- de passer par décomposition (*spread*) des paramètres à une fonction (https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Op%C3%A9rateurs/Syntaxe_d%C3%A9composition)
+- et de récupérer dans un tableau les paramètres "du reste" (*rest parameters*) déclarés en plus des paramètres nommés (https://developer.mozilla.org/fr/docs/Web/JavaScript/Reference/Fonctions/param%C3%A8tres_du_reste )
 
 Typescript fournissait un support, limité, du passage de paramètres par décomposition. Ce code par exemple est fonctionnel en Typescript 2.9
 
@@ -26,7 +26,7 @@ Typescript fournissait un support, limité, du passage de paramètres par décom
     console.log(somme(...[1, 2, 3, 4]));  // spread operator in function call
 
 
-Typescript 3.0 autorise le passage en paramètres de tuples typés par décomposition **vers des paramètres nommés** et permet d'améliorer le check statique des paramètres du reste (rest parameters).
+Typescript 3.0 autorise le passage en paramètre d'un tuple typé par décomposition **vers des paramètres nommés** et permet d'améliorer le check statique des paramètres du reste (rest parameters).
 
 
 Les paramètres du reste, en combinaison avec le passage de paramètres par décomposition (spread arguments), sont très utiles lorsque vous utilisez des wrapper de fonctions.
@@ -37,6 +37,9 @@ Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures 
 
     //typescript-3/spread-params/index.ts
 
+    /*
+     * leftPad("hello", 3, '@') -> "@@@hello"
+     */
     function leftPad(text: string, num: number, char: string = ' '): string {  // paramètres nommés
         for (let i = 0; i < num; i++) {
             text = char + text;
@@ -44,6 +47,9 @@ Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures 
         return text;
     }
 
+    /*
+     * rightPad("hello", 3, '@') -> "hello@@@"
+     */
     function rightPad(text: string, num: number, char: string = ' '): string {
         for (let i = 0; i < num; i++) {
             text = text + char;
@@ -53,41 +59,53 @@ Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures 
 
 Nous souhaitons écrire une fonction *pad* qui effectue consécutivement les deux opérations.
 
-En Typescript <=2.9, on aurait écrit ça:
+On peut écrire cela de cette façon :
 
 .. code :: typescript
 
+    /*
+     * pad("hello", 3, '@') -> "@@@hello@@@"
+     */
     function pad(text: string, num: number, char?: string) {
         return rightPad(leftPad(text, num, char), num, char);
     }
 
-On aurait aimé utiliser la décomposition par souci d'économie du code et de maintenabilité.
-Mais il aurait fallu écrire ça :
+C'est pas mal, mais si nous faisons évoluer les signatures de **leftPad** et **rightPad**, pour ajouter de nouvelles options, la maintenance de **pad** pourrait devenir pénible.
+
+À partir de Typescript 3.0 on a une solution très satisfaisante pour faire cela grâce à la décomposition.
 
 .. code :: typescript
 
-    function pad(text: string, ...args) {  // pas de typage
-        // en typescript, le spread n'était pas possible quand les fonctions appelées n'attendent pas de rest parameters
-        return rightPad(leftPad(text, args[0], args[1]), args[0], args[1]);
+    /* Typescript >= 3.0
+     * pad("hello", 3, '@') -> "@@@hello@@@"
+     */
+    function pad(text: string, ...args: [number, string?]) {  //  possible en TS >= 3
+        return rightPad(leftPad(text, ...args), ...args);  // possible en TS >= 3
     }
 
-Autant rester à la version précédente : on ne pouvait pas passer d'arguments par décomposition si la fonction appelée n'attendait pas explicitement de paramètre du reste...
+C'est mieux : il ne reste plus qu'une seule liste de types à maintenir, et en plus tout est vérifié statiquement !
 
-Et en plus, on n'avait pas de check sur les arguments. Si un développeur écrit malencontreusement :
+Détaillons :
+
+Typage des paramètres du reste
+------------------------------
+
+Pour commencer, il est devenu possible de typer les paramètres du reste en tant que tuples. On peut maintenant écrire :
 
 .. code :: typescript
 
-    pad('hello', '!', 12)  // les paramètres 2 et 3 ont été inversés
-
-Il aura une erreur au runtime !
-
-De fait, on ne pouvait pas profiter de la décomposition dans ce genre de cas.
+    function pad(text: string, ...args: [number, string]) {
 
 
-Typage et décomposition des paramètres du reste
------------------------------------------------
+Grâce à cela, l'appel **pad('hello', 12, '!')** fonctionnera mais la typo **pad('hello', '!', 12)** provoquera une erreur de compilation.
 
-Pour commencer, il est devenu possible de typer et décomposer les paramètres du reste en tant que tuples. On peut maintenant écrire :
+
+Passage de paramètres nommés par décomposition d'un tuple
+---------------------------------------------------------
+
+Ensuite, on peut maintenant **passer, par décomposition, un tuple** en paramètre d'**une fonction qui attend des paramètres nommés**.
+
+On peut donc écrire :
 
 .. code :: typescript
 
@@ -95,23 +113,25 @@ Pour commencer, il est devenu possible de typer et décomposer les paramètres d
         return rightPad(leftPad(text, ...args), ...args); // num = args[0] et char = args[1]
     }
 
-Du coup :
+*Avant, ça n'aurait été possible que si leftPad et rightPad avaient pour signature **leftPad(text: string, ...args: any[])**.*
 
-- les *tuples* **...args** sont décomposés et leurs valeurs checkées statiquement, respectivement,
-- **pad('hello', 12, '!')** fonctionnera mais **pad('hello', '!', 12)** provoquera une erreur de compilation.
+Les *tuples* **...args** sont décomposés pour l'appel de **rightPad** et **leftPad** vers les variables **num** et **args** et les types sont vérifiés statiquement.
 
-*À noter: il faut bien comprendre que pour mapper avec une liste définie de paramètres, on doit travailler explicitement avec des tuples, pas avec des séquences arbitraires.*
+
+*À noter: il faut bien comprendre que pour mapper avec une liste définie de paramètres, on doit travailler explicitement avec des tuples, pas avec des tableaux arbitraires.*
 
 .. code :: typescript
 
-    pad('hello', ...[12, '!'] as [number, string])  // compile
-    pad('hello', ...[12, '!'] // ne compile pas
+    rightPad('hello', ...[12, '!'] as [number, string])  // compile
+    rightPad('hello', ...[12, '!'] as any[]  // ne compile pas
+    rightPad('hello', ...[12, '!']  // ne compile pas non plus car ça revient au précédent
+
 
 
 Valeurs optionnelles dans les tuples et les paramètres du reste
 ---------------------------------------------------------------
 
-Ensuite, on peut maintenant rendre optionnelles les valeurs de tuples, avec l'écriture *?*, comme pour les attributs d'objets sur les interfaces. C'est particulièrement utile avec des paramètres qu'on veut repasser par décomposition à une fonction ayant des paramètres optionnels.
+Enfin, on peut maintenant rendre optionnelles les valeurs de tuples, avec l'écriture *?*, comme pour les attributs d'objets sur les interfaces. C'est particulièrement utile avec des paramètres qu'on veut repasser par décomposition à une fonction ayant des paramètres optionnels.
 
 .. code :: typescript
 
@@ -127,9 +147,12 @@ On pourra donc écrire :
     pad('hello', 12)  // compile
 
 
-Vous pouvez donc maintenant utiliser les paramètres du reste en Typescript sans casser le typage.
-Vous avez ainsi la garantie qu'une erreur de compilation surviendra au niveau de *pad*, puis des appels de *pad*, si vous faites une modification impactante au niveau de la signature de *leftPad* ou *rightPad*.
+En bref
+-------
 
+Dans notre exemple, vous avez la garantie qu'une erreur de compilation surviendra au niveau de *pad*, puis des appels de *pad*, si vous faites une modification impactante au niveau de la signature de *leftPad* ou *rightPad*.
+
+Vous pouvez donc maintenant réutiliser les paramètres du reste par décomposition sans casser le typage.
 
 
 Le type 'unknown'
@@ -137,7 +160,7 @@ Le type 'unknown'
 
 Typescript ajoute un nouveau builtin type: *unknown*. Il remplacera avantageusement le *any* dans de nombreux cas.
 
-*unknown* permet, comme *any*, de déclarer qu'on ne peut déterminer le type d'une variable. Mais son comportement est inverse : alors que le **any** permettait d'indiquer au compilateur que **n'importe quelle propriété** était disponible, **unknown** indique qu'**aucune** propriété n'est disponible, à moins de faire des checks explicites. Il est **type-safe**.
+*unknown* permet, comme *any*, de déclarer qu'on ne peut déterminer le type d'une variable. Mais son comportement est inverse : alors que le **any** permettait d'indiquer au compilateur que **n'importe quelle propriété** était disponible, **unknown** indique qu'**aucune** propriété n'est disponible, à moins de faire des vérifications de type explicites. Il est **type-safe**.
 
 Prenons ce code :
 
@@ -229,16 +252,13 @@ J'ai choisi ici de mettre les trois paquets dans trois dossiers de même niveau 
     project-references
     ├── bar
     │   ├── index.ts  # exporte une fonction bar()
-    │   ├── tsconfig.json
-    │   └── package.json
+    │   └── tsconfig.json
     ├── foo
     │   ├── index.ts  # exporte une fonction foo()
-    │   ├── tsconfig.json
-    │   └── package.json
+    │   └── tsconfig.json
     ├── main
     │   ├── index.ts  # appelle les fonctions foo() et bar()
-    │   ├── tsconfig.json
-    │   └── package.json
+    │   └── tsconfig.json
     ├── *lib*
     ├── *node_modules*
     └── package.json # dépendance typescript
@@ -342,6 +362,4 @@ La nouvelle option *--build* permet
 - comme on l'a vu, de builder un module avec ses *project references*
 - de builder plusieurs projets en même temps, si plusieurs fichiers tsconfig.json sont passés en paramètre (par exemple, on peut faire **tsc -b bar/tsconfig.json foo/tsconfig.json**)
 
-Le changelog officiel :
-
-_changelog: https://github.com/Microsoft/TypeScript/wiki/What's-new-in-TypeScript#typescript-30
+Le changelog officiel : https://github.com/Microsoft/TypeScript/wiki/What's-new-in-TypeScript#typescript-30
