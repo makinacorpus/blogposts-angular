@@ -1,7 +1,118 @@
 Les nouveautés de Typescript 3
 ==============================
 
-Typescript 3 vient de sortir, voici quelques nouveautés... et des exemples !
+Typescript 3.0 vient de sortir, voici quelques nouveautés... et des exemples !
+
+
+Check statique des paramètres du reste
+--------------------------------------
+
+Pour rappel, javascript permet de passer par décomposition des paramètres à une fonction et de récupérer dans une array les paramètres 'du reste' passés en plus, grâce au spread operator '...'.
+
+Ce code est fonctionnel en Typescript 2.9
+
+    ..code: typescript
+    function somme(...args: number[]) {  // rest parameters
+        let total = 0;
+        for (let num of args) {
+            total += num;
+        }
+        return total;
+    }
+    console.log(somme(1, 2, 3, 4);
+    console.log(somme(...[1, 2, 3, 4]));  // spread operator in function call
+
+
+
+Typescript 3.0 permet d'améliorer le check statique des paramètres du reste (rest parameters) et autorise le passage en paramètres de tuples typés par décomposition vers des paramètres nommés.
+
+
+Les paramètres du reste, en combinaison avec le passage de paramètres par décomposition (spread arguments), sont très utiles lorsque vous utilisez des wrapper de fonctions.
+
+Prenons par exemple ces deux fonctions, leftPad et rightPad, aux signatures similaires :
+
+    ..code: typescript
+
+    //typescript-3/spread-params/index.ts
+
+    function leftPad(text: string, num: number, char: string = ' '): string {  // paramètres nommés
+        for (let i = 0; i < num; i++) {
+            text = char + text;
+        }
+        return text;
+    }
+
+    function rightPad(text: string, num: number, char: string = ' '): string {
+        for (let i = 0; i < num; i++) {
+            text = text + char;
+        }
+        return text;
+    }
+
+Nous souhaitons écrire une fonction `pad` qui effectue consécutivement les deux opérations.
+
+En Typescript <3, on aurait écrit ça:
+
+    ..code: typescript
+
+    function pad(text: string, num: number, char?: string) {
+        return rightPad(leftPad(text, num, char), num, char);
+    }
+
+On aurait aimé utiliser la décomposition par souci d'économie du code et de maintenabilité.
+Mais il aurait fallu écrire ça :
+
+    ..code: typescript
+
+    function pad(text: string, ...args) {  // pas de typage
+        // en typescript, le spread n'était pas possible quand les fonctions appelées n'attendent pas de rest parameters
+        return rightPad(leftPad(text, args[0], args[1]), args[0], args[1]);
+    }
+
+Autant rester à la version précédente : on ne pouvait pas passer d'arguments par décomposition si la fonction appelée n'attendait pas explicitement de paramètre du reste...
+
+Et en plus, on n'avait pas de check sur les arguments. Si un développeur écrit malencontreusement :
+`pad('hello', '!', 12)`, il aura une erreur au runtime !
+
+De fait, on ne pouvait pas profiter de la décomposition dans ce genre de cas.
+
+
+**typage des paramètres du reste**
+
+Pour commencer, il est devenu possible de typer les paramètres du reste en tant que tuples. On peut écrire :
+
+    ..code: typescript
+
+    function pad(text: string, ...args: [number, string]) {
+        return rightPad(leftPad(text, ...args), ...args); // num = args[0] et char = args[1]
+    }
+
+Du coup :
+
+- les *tuples* `...args` sont décomposés et leurs valeurs checkées statiquement, respectivement,
+- `pad('hello', 12, '!')` fonctionnera mais `pad('hello', '!', 12)` provoquera une erreur de compilation.
+
+*À noter: il faut bien comprendre que pour mapper avec une liste définie de paramètres, on travaille forcément avec des tuples, pas avec des séquences arbitraires : on peut écrire
+`console.log(pad('hello', ...[12, '!'] as [number, string]));` mais pas `console.log(pad('hello', ...[12, '!'])); // erreur de compilation`
+*
+
+
+**valeurs optionnelles dans les tuples et les paramètres du reste**
+
+Ensuite, on peut maintenant rendre optionnelles les valeurs de tuples, avec l'écriture `?`, comme pour les attributs d'objets sur les interfaces. C'est particulièrement utile avec des paramètres du reste qu'on veut repasser par décomposition.
+
+    ..code: typescript
+
+    function pad(text: string, ...args: [number, string?]) {  // le paramètre 'caractère' est facultatif
+        return rightPad(leftPad(text, ...args), ...args);
+    }
+
+    On pourra donc écrire `pad('hello', 12, ' ')` ou `pad('hello', 12)`.
+
+
+Vous pouvez donc maintenant utiliser les paramètres du reste en Typescript sans casser le typage.
+Vous avez ainsi la garantie qu'une erreur de compilation surviendra au niveau de `pad`, puis des appels de `pad`, si vous faites une modification impactante au niveau de la signature de `leftPad` ou `rightPad`.
+
 
 Les project references
 ----------------------
@@ -90,6 +201,20 @@ Il est nécessaire de définir la cible de chaque compilation pour générer une
         }
       ]
     }
+
+
+    ..code: typescript
+
+    // ./main/tsconfig.json
+    import { bar } from '../bar';
+    import { foo } from '../foo';
+
+    export function foobar() {
+      console.log(bar());
+      console.log(foo());
+    }
+
+    foobar();
 
 
 L'option racine **"references"** permet de spécifier les sous-projets du projet maître.

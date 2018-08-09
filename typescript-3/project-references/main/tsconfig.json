@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
     "outDir": "../lib/main"
   },
   "references": [

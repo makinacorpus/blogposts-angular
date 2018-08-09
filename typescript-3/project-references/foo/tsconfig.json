@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    // Needed for project references.
     "composite": true,
     "declaration": true,
     "outDir": "../lib/foo"
