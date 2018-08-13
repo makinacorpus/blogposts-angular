@@ -23,7 +23,7 @@ Typescript fournissait un support, limité, du passage de paramètres par décom
         return total;
     }
     console.log(somme(1, 2, 3, 4);
-    console.log(somme(...[1, 2, 3, 4]));  // spread operator in function call
+    console.log(somme(...[1, 2, 3, 4]));  // passage de paramètres par décomposition
 
 
 Typescript 3.0 autorise le passage en paramètre d'un tuple typé par décomposition **vers des paramètres nommés** et permet d'améliorer le check statique des paramètres du reste (rest parameters).
@@ -31,15 +31,19 @@ Typescript 3.0 autorise le passage en paramètre d'un tuple typé par décomposi
 
 Les paramètres du reste, en combinaison avec le passage de paramètres par décomposition (spread arguments), sont très utiles lorsque vous utilisez des wrapper de fonctions.
 
-Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures similaires :
+Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*. Elles permettent d'ajouter à gauche, ou à droite, d'un texte, plusieurs caractères de séparation. Ces deux fonctions ont des signatures similaires : elles prennent en paramètre un texte, un nombre et un paramètre de séparation.
+
+.. code :: typescript
+
+    leftPad("hello", 3, '@') -> "@@@hello"
+    rightPad("hello", 3, '@') -> "hello@@@"
+
+Voici leur implémentation :
 
 .. code :: typescript
 
     //typescript-3/spread-params/index.ts
 
-    /*
-     * leftPad("hello", 3, '@') -> "@@@hello"
-     */
     function leftPad(text: string, num: number, char: string = ' '): string {  // paramètres nommés
         for (let i = 0; i < num; i++) {
             text = char + text;
@@ -47,9 +51,6 @@ Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures 
         return text;
     }
 
-    /*
-     * rightPad("hello", 3, '@') -> "hello@@@"
-     */
     function rightPad(text: string, num: number, char: string = ' '): string {
         for (let i = 0; i < num; i++) {
             text = text + char;
@@ -59,25 +60,25 @@ Prenons par exemple ces deux fonctions, *leftPad* et *rightPad*, aux signatures 
 
 Nous souhaitons écrire une fonction *pad* qui effectue consécutivement les deux opérations.
 
+.. code :: typescript
+
+    pad("hello", 3, '@') -> "@@@hello@@@"
+
 On peut écrire cela de cette façon :
 
 .. code :: typescript
 
-    /*
-     * pad("hello", 3, '@') -> "@@@hello@@@"
-     */
     function pad(text: string, num: number, char?: string) {
         return rightPad(leftPad(text, num, char), num, char);
     }
 
 C'est pas mal, mais si nous faisons évoluer les signatures de **leftPad** et **rightPad**, pour ajouter de nouvelles options, la maintenance de **pad** pourrait devenir pénible.
 
-À partir de Typescript 3.0 on a une solution très satisfaisante pour faire cela grâce à la décomposition.
+À partir de Typescript 3.0, trois améliorations vont permettre de mettre en place une solution plus satisfaisante. Nous allons pouvoir écrire cela :
 
 .. code :: typescript
 
     /* Typescript >= 3.0
-     * pad("hello", 3, '@') -> "@@@hello@@@"
      */
     function pad(text: string, ...args: [number, string?]) {  //  possible en TS >= 3
         return rightPad(leftPad(text, ...args), ...args);  // possible en TS >= 3
@@ -85,7 +86,7 @@ C'est pas mal, mais si nous faisons évoluer les signatures de **leftPad** et **
 
 C'est mieux : il ne reste plus qu'une seule liste de types à maintenir, et en plus tout est vérifié statiquement !
 
-Détaillons :
+Détaillons chacune de ces améliorations :
 
 Typage des paramètres du reste
 ------------------------------
@@ -96,6 +97,7 @@ Pour commencer, il est devenu possible de typer les paramètres du reste en tant
 
     function pad(text: string, ...args: [number, string]) {
 
+*Pour rappel, un tuple est un tableau dont le nombre d'éléments est défini et dont les valeurs peuvent être de types hétérogènes : https://www.typescriptlang.org/docs/handbook/basic-types.html#tuple*.
 
 Grâce à cela, l'appel **pad('hello', 12, '!')** fonctionnera mais la typo **pad('hello', '!', 12)** provoquera une erreur de compilation.
 
@@ -123,8 +125,8 @@ Les *tuples* **...args** sont décomposés pour l'appel de **rightPad** et **lef
 .. code :: typescript
 
     rightPad('hello', ...[12, '!'] as [number, string])  // compile
-    rightPad('hello', ...[12, '!'] as any[]  // ne compile pas
-    rightPad('hello', ...[12, '!']  // ne compile pas non plus car ça revient au précédent
+    rightPad('hello', ...[12, '!'] as any[])  // ne compile pas
+    rightPad('hello', ...[12, '!'])  // ne compile pas non plus car ça revient au précédent
 
 
 
@@ -155,12 +157,36 @@ Dans notre exemple, vous avez la garantie qu'une erreur de compilation surviendr
 Vous pouvez donc maintenant réutiliser les paramètres du reste par décomposition sans casser le typage.
 
 
+Pour aller plus loin : paramètres du reste et généricité
+--------------------------------------------------------
+
+Tout cela fonctionne avec les types génériques.
+C'est très utile car cela permet de créer des fonctions wrapper génériques (pour faire du logging, du cache, gérer des erreurs, déclencher des événements...).
+Tout cela, maintenant, sans perdre le typage !
+
+Par exemple, le code suivant prend une fonction en premier paramètre, log ses arguments et l'exécute avec les autres arguments passés :
+
+.. code :: typescript
+
+    function logParamsAndDo<T extends any[], U>(func: ((...args: T) => U), ...args: T) {
+      console.log(arguments);
+      return func(...args)
+    }
+
+    let test = logParamsAndDo(leftPad, 'hello', 12, '@');  // compile
+    test = logParamsAndDo(leftPad, 'hello', 12);  // compile
+    // test = logParamsAndDo(leftPad, 'hello', '@', 12) // ne compile pas
+
+
 Le type 'unknown'
 =================
 
 Typescript ajoute un nouveau builtin type: *unknown*. Il remplacera avantageusement le *any* dans de nombreux cas.
 
-*unknown* permet, comme *any*, de déclarer qu'on ne peut déterminer le type d'une variable. Mais son comportement est inverse : alors que le **any** permettait d'indiquer au compilateur que **n'importe quelle propriété** était disponible, **unknown** indique qu'**aucune** propriété n'est disponible, à moins de faire des vérifications de type explicites. Il est **type-safe**.
+*unknown* permet, comme *any*, de déclarer qu'on ne peut pas déterminer le type d'une variable.
+ Mais son comportement est inverse : alors que le **any** permettait d'indiquer au compilateur que **n'importe quelle propriété** était disponible,
+**unknown** indique qu'**aucune** propriété n'est disponible, à moins de faire des vérifications de type explicites.
+Il est **type-safe**.
 
 Prenons ce code :
 
@@ -188,7 +214,7 @@ Eh bien avec **unknown**, ça ne **compilera pas** :
 
 .. code :: typescript
 
-    // ne compile pas : ni display ni toString ne sont disponibles
+    // ne compile pas : ni displayNumber ni toString ne sont disponibles
     function badDisplayableUnknown(unknownValue: unknown): string {
       return !!unknownValue.displayNumber ? unknownValue.displayNumber() : unknownValue.toString();
     }
@@ -201,7 +227,9 @@ Eh bien avec **unknown**, ça ne **compilera pas** :
       return unknownValue instanceof Car ? unknownValue.display() : unknownValue;
     }
 
-**unknown** vous oblige à checker les types avant de pouvoir utiliser les propriétés (fondamentalement: *vous pouvez faire l'intersection de unknown avec n'importe quel type pour obtenir ce type*). Vous serez donc **obligés** (avec any, vous pouvez mais n'êtes pas obligés...) d'écrire quelque chose comme ça :
+**unknown** vous oblige à checker les types avant de pouvoir utiliser les propriétés
+(fondamentalement: *vous pouvez faire l'intersection de unknown avec n'importe quel type pour obtenir ce type*).
+Vous serez donc **obligés** (avec any, vous pouvez mais n'êtes pas obligés...) d'écrire quelque chose comme ça :
 
 .. code :: typescript
 
@@ -363,3 +391,11 @@ La nouvelle option *--build* permet
 - de builder plusieurs projets en même temps, si plusieurs fichiers tsconfig.json sont passés en paramètre (par exemple, on peut faire **tsc -b bar/tsconfig.json foo/tsconfig.json**)
 
 Le changelog officiel : https://github.com/Microsoft/TypeScript/wiki/What's-new-in-TypeScript#typescript-30
+
+Nous pouvons vous aider
+=======================
+
+Chez Makina nous travaillons beaucoup avec Typescript, sur des projets Angular, React ou jQuery. Si vous souhaitez sauter le pas vers Typescript, nous pouvons vous aider. Contactez-nous ! contact@makina-corpus.com
+
+Sachez aussi que notre formation Angular comprend une initiation à Typescript : https://edit.makina-corpus.com/formations/formation-angular-initiation
+
